@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -6,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>مسابقة قهوة أم كلثوم – كأس العالم 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
-<!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 :root{--gold:#C9A84C;--gold-light:#E8C96A;--gold-dim:#8B6914;--em:#005C3A;--em2:#007A4E;--dark:#060D14;--card:#0D1822;--card2:#111F2E;--border:#1A2D40;--text:#D4E0EC;--muted:#546E82;--white:#F0F6FB}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -155,7 +156,7 @@ nav button.adm-btn{color:var(--gold)}nav button.adm-btn.active{background:var(--
 .adm-m{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .adm-ctrl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 /* KO SLOTS */
-.ko-slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.ko-slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px}
 .ko-slot{background:#060D14;border:1px solid var(--border);border-radius:7px;padding:9px;display:flex;align-items:center;gap:7px}
 .ko-lbl{font-size:.68rem;color:var(--muted);font-weight:700;min-width:120px;flex-shrink:0;line-height:1.4}
 /* PLAYER MGMT */
@@ -451,8 +452,18 @@ nav button.adm-btn{color:var(--gold)}nav button.adm-btn.active{background:var(--
 // ══════════════════════════════════════════════════════════
 //  FIREBASE INIT
 // ══════════════════════════════════════════════════════════
-const {createClient}=supabase;
-const SB=createClient('https://ykdcejqgawrpeplgdskj.supabase.co','sb_publishable_QYJqEvxWDPYfeQOUK5ch7A_A6yI8dsm');
+const FB_CONFIG = {
+  apiKey: "AIzaSyAoSsSQqegfu6WKVRPTDQ75Ik5HOrrvFdY",
+  authDomain: "wc2026-omklthom.firebaseapp.com",
+  projectId: "wc2026-omklthom",
+  storageBucket: "wc2026-omklthom.firebasestorage.app",
+  messagingSenderId: "329642176760",
+  appId: "1:329642176760:web:7e6ffbe23873f554fd0b0d"
+};
+
+firebase.initializeApp(FB_CONFIG);
+const db = firebase.firestore();
+const auth = firebase.auth();
 const COL_PRED = 'predictions';
 const COL_ACT  = 'actuals';
 const DOC_ACT  = 'main';
@@ -512,8 +523,7 @@ const KO=[
   {id:103,st:'المركز الثالث',lo:[101,102],dt:'18-7',vn:'Miami'},
   {id:104,st:'النهائي',wo:[101,102],dt:'19-7',vn:'NY'}
 ];
-const KO_PTS={73:10,74:10,75:10,76:10,77:10,78:10,79:10,80:10,81:10,82:10,83:10,84:10,85:10,86:10,87:10,88:10,89:20,90:20,91:20,92:20,93:20,94:20,95:20,96:20,97:30,98:30,99:30,100:30,101:40,102:40,103:50,104:100};const KO_PTS={73:3,74:3,75:3,76:3,77:3,78:3,79:3,80:3,81:3,82:3,83:3,84:3,85:3,86:3,87:3,88:3,
-  89:5,90:5,91:5,92:5,93:5,94:5,95:5,96:5,97:7,98:7,99:7,100:7,101:10,102:10,103:15,104:20};
+const KO_PTS={73:10,74:10,75:10,76:10,77:10,78:10,79:10,80:10,81:10,82:10,83:10,84:10,85:10,86:10,87:10,88:10,89:20,90:20,91:20,92:20,93:20,94:20,95:20,96:20,97:30,98:30,99:30,100:30,101:40,102:40,103:50,104:100};
 
 // ══════════════════════════════════════════════════════════
 //  DEADLINES (Cairo Time = UTC+3)
@@ -526,15 +536,54 @@ const DEFAULT_DEADLINES = {
 };
 
 // Per-KO-match kickoff times (Cairo UTC+3)
-const KO_KICKOFF={73:'2026-06-28T22:00:00+03:00',76:'2026-06-29T20:00:00+03:00',74:'2026-06-29T23:30:00+03:00',75:'2026-06-30T04:00:00+03:00',79:'2026-06-30T20:00:00+03:00',77:'2026-07-01T00:00:00+03:00',78:'2026-07-01T04:00:00+03:00',80:'2026-07-01T19:00:00+03:00',82:'2026-07-01T23:00:00+03:00',81:'2026-07-02T03:00:00+03:00',84:'2026-07-02T22:00:00+03:00',83:'2026-07-03T02:00:00+03:00',85:'2026-07-03T06:00:00+03:00',88:'2026-07-03T21:00:00+03:00',86:'2026-07-04T01:00:00+03:00',87:'2026-07-04T04:30:00+03:00',90:'2026-07-04T20:00:00+03:00',89:'2026-07-05T00:00:00+03:00',91:'2026-07-05T23:00:00+03:00',92:'2026-07-06T03:00:00+03:00',93:'2026-07-06T22:00:00+03:00',94:'2026-07-07T03:00:00+03:00',95:'2026-07-07T19:00:00+03:00',96:'2026-07-07T23:00:00+03:00',97:'2026-07-09T21:00:00+03:00',98:'2026-07-10T21:00:00+03:00',99:'2026-07-11T21:00:00+03:00',100:'2026-07-12T01:00:00+03:00',101:'2026-07-14T22:00:00+03:00',102:'2026-07-15T22:00:00+03:00',103:'2026-07-19T00:00:00+03:00',104:'2026-07-19T22:00:00+03:00'}
-const KO_LOCK_MINS = 30;
+const KO_KICKOFF = {
+  73:  '2026-06-29T00:00:00+03:00',
+  74:  '2026-06-30T01:00:00+03:00',
+  75:  '2026-06-28T22:00:00+03:00',
+  76:  '2026-06-29T04:00:00+03:00',
+  77:  '2026-07-02T04:00:00+03:00',
+  78:  '2026-07-02T04:00:00+03:00',
+  79:  '2026-07-01T01:00:00+03:00',
+  80:  '2026-07-01T07:00:00+03:00',
+  81:  '2026-06-29T04:00:00+03:00',
+  82:  '2026-06-30T07:00:00+03:00',
+  83:  '2026-06-30T04:00:00+03:00',
+  84:  '2026-07-01T04:00:00+03:00',
+  85:  '2026-07-03T04:00:00+03:00',
+  86:  '2026-07-03T04:00:00+03:00',
+  87:  '2026-07-02T07:00:00+03:00',
+  88:  '2026-07-03T07:00:00+03:00',
+  89:  '2026-07-04T21:00:00+03:00',
+  90:  '2026-07-05T01:00:00+03:00',
+  91:  '2026-07-07T01:00:00+03:00',
+  92:  '2026-07-07T04:00:00+03:00',
+  93:  '2026-07-06T00:00:00+03:00',
+  94:  '2026-07-06T04:00:00+03:00',
+  95:  '2026-07-08T01:00:00+03:00',
+  96:  '2026-07-08T04:00:00+03:00',
+  97:  '2026-07-10T01:00:00+03:00',
+  98:  '2026-07-11T00:00:00+03:00',
+  99:  '2026-07-12T01:00:00+03:00',
+  100: '2026-07-12T05:00:00+03:00',
+  101: '2026-07-15T00:00:00+03:00',
+  102: '2026-07-16T00:00:00+03:00',
+  103: '2026-07-19T01:00:00+03:00',
+  104: '2026-07-20T01:00:00+03:00',
+};
+const KO_LOCK_MINS = 120; // 2 hours
 
 function getDeadline(key) {
   const override = S.actuals?.deadlines?.[key];
   return override || DEFAULT_DEADLINES[key];
 }
-function getKODeadline(matchId){const base=S.actuals?.koKickoffs?.[matchId]||S.actuals?.deadlines?.['ko_'+matchId]||KO_KICKOFF[matchId];if(!base)return null;const d=new Date(base);d.setMinutes(d.getMinutes()-KO_LOCK_MINS);return d;}
-function getKOKickoffInputVal(matchId){const k=S.actuals?.koKickoffs?.[matchId]||KO_KICKOFF[matchId]||'';if(!k)return'';try{return new Date(k).toLocaleString('sv-SE',{timeZone:'Africa/Cairo'}).replace(' ','T').substring(0,16);}catch(e){return'';}}
+function getKODeadline(matchId) {
+  const override = S.actuals?.deadlines?.['ko_'+matchId];
+  const base = override || KO_KICKOFF[matchId];
+  if (!base) return null;
+  const d = new Date(base);
+  d.setMinutes(d.getMinutes() - KO_LOCK_MINS);
+  return d;
+}
 function isPastDeadline(key) {
   const dl = getDeadline(key);
   if (!dl) return false;
@@ -542,11 +591,6 @@ function isPastDeadline(key) {
 }
 function isKOMatchLocked(matchId){
   return !!(S.actuals.koLocks&&S.actuals.koLocks[matchId]);
-}
-function getKOKickoffStr(matchId){
-  const k=(S.actuals.koKickoffs&&S.actuals.koKickoffs[matchId])||KO_KICKOFF[matchId]||'';
-  if(!k)return'';
-  try{return new Date(k).toLocaleString('ar-EG',{timeZone:'Africa/Cairo',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}catch(e){return'';}
 }
 async function toggleKOLock(matchId){
   if(!S.actuals.koLocks)S.actuals.koLocks={};
@@ -650,49 +694,55 @@ function setSync(state){
 
 async function fbSavePred(){
   if(!S.fbUid||!S.user)return;
-  try{localStorage.setItem('wc26_draft_'+S.fbUid,JSON.stringify(S.draft));}catch(e){}
   setSync('syncing');
   try{
-    const {error}=await SB.from(COL_PRED).upsert({id:S.fbUid,name:S.user.name,data:{...S.draft,name:S.user.name,avatar:S.user.avatar},updated_at:new Date().toISOString()});
-    if(error)throw error; setSync('on');
-  }catch(e){setSync('off');toast('⚠️ حُفظ محلياً');}
+    await db.collection(COL_PRED).doc(S.fbUid).set({
+      ...S.draft, name:S.user.name, avatar:S.user.avatar,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    setSync('on');
+  }catch(e){setSync('off');toast('❌ خطأ في الحفظ: '+e.message);}
 }
 
 async function fbSaveActuals(){
   setSync('syncing');
   try{
-    const {error}=await SB.from(COL_ACT).upsert({id:DOC_ACT,data:S.actuals,updated_at:new Date().toISOString()});
-    if(error)throw error; setSync('on'); toast('✅ تم الحفظ!',5000);
-  }catch(e){setSync('off');toast('❌ خطأ: '+e.message);}
+    await db.collection(COL_ACT).doc(DOC_ACT).set({
+      ...S.actuals,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    setSync('on');
+    toast('✅ تم حفظ البيانات والنتائج بنجاح!',5000);
+  }catch(e){setSync('off');toast('❌ خطأ في الحفظ: '+e.message);}
 }
 
 function listenPreds(){
-  SB.from(COL_PRED).select('*').then(({data})=>{
-    S.allPreds={};(data||[]).forEach(r=>{S.allPreds[r.id]=r.data;});
-    try{localStorage.setItem('wc26_preds_cache',JSON.stringify(S.allPreds));}catch(e){}
-    renderLB();if(admOk)renderAdm();
-  });
-  SB.channel('preds').on('postgres_changes',{event:'*',schema:'public',table:COL_PRED},
-    ()=>SB.from(COL_PRED).select('*').then(({data})=>{
-      S.allPreds={};(data||[]).forEach(r=>{S.allPreds[r.id]=r.data;});
-      try{localStorage.setItem('wc26_preds_cache',JSON.stringify(S.allPreds));}catch(e){}
-      renderLB();if(document.getElementById('view-pubs')?.classList.contains('active'))renderPubs();if(S.step===6&&S.user)renderStep();if(admOk)renderAdm();
-    })).subscribe();
-}
-function listenActuals(){
-  SB.from(COL_ACT).select('*').eq('id',DOC_ACT).maybeSingle().then(({data})=>{
-    if(data){S.actuals={groups:{},bestThirds:[],matches:{},koTeams:{},koLocks:{},deadlines:{},koKickoffs:{},announcement:'',...data.data};}
-    try{localStorage.setItem('wc26_actuals_cache',JSON.stringify(S.actuals));}catch(e){}
-    renderLB();renderAnnounceBanner();if(S.step===6&&S.user)renderStep();if(admOk)renderAdm();
-  });
-  SB.channel('acts').on('postgres_changes',{event:'*',schema:'public',table:COL_ACT},
-    ()=>SB.from(COL_ACT).select('*').eq('id',DOC_ACT).maybeSingle().then(({data})=>{
-      if(data){S.actuals={groups:{},bestThirds:[],matches:{},koTeams:{},koLocks:{},deadlines:{},koKickoffs:{},announcement:'',...data.data};}
-      try{localStorage.setItem('wc26_actuals_cache',JSON.stringify(S.actuals));}catch(e){}
-      renderLB();renderAnnounceBanner();if(S.step===6&&S.user)renderStep();if(admOk)renderAdm();
-    })).subscribe();
+  if(S.unsubPreds)S.unsubPreds();
+  S.unsubPreds=db.collection(COL_PRED).onSnapshot(snap=>{
+    S.allPreds={};
+    snap.forEach(doc=>{ S.allPreds[doc.id]=doc.data(); });
+    renderLB();
+    if(document.getElementById('view-pubs').classList.contains('active')) renderPubs();
+    if(S.step===6&&S.user) renderStep();
+    if(admOk) renderAdm();
+  },e=>{ setSync('off'); console.error(e); });
 }
 
+function listenActuals(){
+  if(S.unsubAct)S.unsubAct();
+  S.unsubAct=db.collection(COL_ACT).doc(DOC_ACT).onSnapshot(doc=>{
+    if(doc.exists){ S.actuals={groups:{},bestThirds:[],matches:{},koTeams:{},deadlines:{},announcement:'',...doc.data()}; }
+    renderLB();
+    renderAnnounceBanner();
+    if(S.step===6&&S.user) renderStep();
+    if(admOk) renderAdm();
+  },e=>console.error(e));
+}
+
+// ══════════════════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════════════════
+let selAv='☕';
 function renderAvGrid(){
   const grid = document.getElementById('av-grid');
   if(!grid) return;
@@ -709,12 +759,20 @@ async function doLogin(){
 
   showLoader('جاري التحقق...');
   try{
-    const {data:rows}=await SB.from(COL_PRED).select('*').eq('name',nm);
-    let fbUid,existingData=null;
-    if(rows&&rows.length>0){
-      const row=rows[0];existingData=row.data;fbUid=row.id;
-      if(existingData.pin){if(existingData.pin!==pin){hideLoader();toast('❌ الـ PIN غير صحيح');return;}}
-      else{const ud={...existingData,pin};await SB.from(COL_PRED).update({data:ud,updated_at:new Date().toISOString()}).eq('id',fbUid);toast('✅ تم تعيين PIN!');}
+    const snap=await db.collection(COL_PRED).where('name','==',nm).get();
+    let fbUid, existingData=null;
+
+    if(!snap.empty){
+      const doc=snap.docs[0];
+      existingData=doc.data();
+      fbUid=doc.id;
+
+      if(existingData.pin){
+        if(existingData.pin!==pin){hideLoader();toast('❌ الـ PIN غير صحيح. تواصل مع الآدمن إذا نسيته.');return;}
+      } else {
+        await db.collection(COL_PRED).doc(fbUid).update({pin});
+        toast('✅ تم تعيين PIN لحسابك!');
+      }
       S.draft={
         groups:existingData.groups||{},
         bestThirds:existingData.bestThirds||Array(8).fill(''),
@@ -733,7 +791,13 @@ async function doLogin(){
         saves:{groups:false,thirds:false,bracket:false,r1:false,r2:false,r3:false,ko:false},
         submits:{groups:false,thirds:false,bracket:false,r1:false,r2:false,r3:false,ko:false},
         adminLocks:{}};
-      // inserted via SB.from above
+      await db.collection(COL_PRED).doc(fbUid).set({
+        name:nm,avatar:selAv,pin,
+        groups:{},bestThirds:Array(8).fill(''),knockout:{},matches:{},
+        saves:{groups:false,thirds:false,bracket:false,r1:false,r2:false,r3:false,ko:false},
+        submits:{groups:false,thirds:false,bracket:false,r1:false,r2:false,r3:false,ko:false},
+        adminLocks:{}
+      });
     }
     S.fbUid=fbUid;
     S.user={uid:fbUid,name:nm,avatar:existingData?.avatar||selAv};
@@ -1109,8 +1173,9 @@ function rKO(card){
   const lk=isLk('ko');
   let h=`<div class="sec-head"><div><h2>مباريات الإقصائيات</h2><p>الفرق من نتائج الآدمن – كل مباراة تُقفل قبل ساعتين من انطلاقها</p></div></div>`;
   h+=`<div class="lkbar info" style="font-size:.72rem">⏰ يُقفل توقع كل مباراة قبل انطلاقها بساعتين تلقائياً</div>`;
-  const koReady=KO.filter(m=>S.actuals.koTeams&&S.actuals.koTeams['m'+m.id+'_h']);
+  const koReady=KO.filter(m=>S.actuals.koTeams&&S.actuals.koTeams['m'+m.id+'_h']&&S.actuals.koTeams['m'+m.id+'_a']);
   if(koReady.length===0){h+=`<div class="lkbar warn">⏳ لم يُدخل الآدمن فرق الإقصائيات بعد</div>`;}
+  h+=`<div class="lkbar info" style="font-size:.72rem">🔒 يُقفل الآدمن كل مباراة يدوياً قبل انطلاقها</div>`;
   h+=`<div class="mlist">`;
   for(const m of KO){
     const home=(S.actuals.koTeams&&S.actuals.koTeams[`m${m.id}_h`])||'';
@@ -1121,7 +1186,7 @@ function rKO(card){
     const ready=!!(home&&away);
     const mLocked=isLk('ko')||isKOMatchLocked(m.id);
     h+=`<div class="mi${sv?' sv-m':''}" id="mi-${m.id}">
-      <span class="mnum">${m.id}|${m.st}|${m.dt}${koMatchDLBar(m.id)}</span>
+      <span class="mnum">${m.id}|${m.st}|${m.dt}${mLocked?' 🔒':''}</span>
       <div class="mteams">
         <span class="mt h" style="${!ready?'color:var(--muted);font-style:italic':''}">${home}</span>
         <span class="mvs">ضد</span>
@@ -1430,49 +1495,41 @@ function renderAdm(){
   }
   h+=`</div></div>
 
-  <!-- 7. KO TEAM SLOTS + KICKOFF TIMES -->
+  <!-- 7. KO TEAM SLOTS + MANUAL LOCK -->
   <div class="card" style="margin-bottom:12px">
-    <h3 style="font-weight:900;color:var(--gold);margin-bottom:4px;font-size:.9rem">🔀 فرق الإقصائيات + مواعيد الانطلاق</h3>
-    <p style="font-size:.72rem;color:var(--muted);margin-bottom:10px">أدخل الفريقين + موعد الانطلاق (توقيت القاهرة) – يُغلق التوقع تلقائياً قبل الانطلاق بـ30 دقيقة. المواعيد الرسمية محمَّلة مسبقاً.</p>`;
-  const koGs=[{l:'دور الـ32',r:[73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88]},{l:'دور الـ16',r:[89,90,91,92,93,94,95,96]},{l:'ربع النهائي',r:[97,98,99,100]},{l:'نصف النهائي',r:[101,102]},{l:'المركز الثالث والنهائي',r:[103,104]}];
-  koGs.forEach(({l,r})=>{
-    h+=`<div style="margin-bottom:12px"><div style="font-size:.75rem;font-weight:800;color:var(--gold-light);margin-bottom:7px;padding:5px 10px;background:rgba(201,168,76,.06);border-radius:6px;border-right:3px solid var(--gold)">${l}</div>`;
-    r.forEach(id=>{
-      const m=KO.find(x=>x.id===id);if(!m)return;
-      const vA=(S.actuals.koTeams&&S.actuals.koTeams[`m${id}_h`])||'';
-      const vB=(S.actuals.koTeams&&S.actuals.koTeams[`m${id}_a`])||'';
-      const kick=getKOKickoffInputVal(id);
-      const dl=getKODeadline(id);const expired=dl&&new Date()>=dl;
-      h+=`<div style="background:var(--card2);border:1px solid ${expired?'rgba(192,57,43,.3)':'var(--border)'};border-radius:9px;padding:10px;margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
-          <span style="background:#060D14;border:1px solid var(--border);padding:2px 8px;border-radius:5px;color:var(--gold);font-size:.7rem;font-weight:700">م${id}</span>
-          ${expired?'<span style="font-size:.62rem;background:rgba(192,57,43,.12);color:#e74c3c;padding:2px 7px;border-radius:4px">🔒 مغلق</span>':''}
-          ${vA&&vB?`<span style="font-size:.72rem;color:var(--white);font-weight:700">${vA} × ${vB}</span>`:'<span style="font-size:.68rem;color:var(--muted)">لم يُحدد الفريقان بعد</span>'}
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-          <div><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px">الفريق أ</div>
-            <select class="psel" style="width:100%;font-size:.7rem" onchange="setKT('m${id}_h',this.value)">
-              ${opt('','— اختر —',vA)}${ALL_TEAMS.map(t=>opt(t,t,vA)).join('')}
-            </select></div>
-          <div><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px">الفريق ب</div>
-            <select class="psel" style="width:100%;font-size:.7rem" onchange="setKT('m${id}_a',this.value)">
-              ${opt('','— اختر —',vB)}${ALL_TEAMS.map(t=>opt(t,t,vB)).join('')}
-            </select></div>
-          <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:4px">
-            <div style="font-size:.58rem;color:var(--muted)">⏰ ${getKOKickoffStr(id)||'وقت الانطلاق غير محدد'}</div>
-            <button onclick="toggleKOLock(${id})"
-              style="padding:8px;border-radius:7px;border:1px solid;cursor:pointer;font-family:'Cairo',sans-serif;font-size:.75rem;font-weight:700;width:100%;transition:all .2s;
-              background:${(S.actuals.koLocks&&S.actuals.koLocks[id])?'rgba(192,57,43,.12)':'rgba(46,204,113,.08)'};
-              border-color:${(S.actuals.koLocks&&S.actuals.koLocks[id])?'rgba(192,57,43,.4)':'rgba(46,204,113,.3)'};
-              color:${(S.actuals.koLocks&&S.actuals.koLocks[id])?'#e74c3c':'#2ecc71'}">
-              ${(S.actuals.koLocks&&S.actuals.koLocks[id])?'🔒 مقفولة – اضغط لفتحها':'🔓 مفتوحة – اضغط لقفلها'}
-            </button>
-          </div>
-        </div>
-      </div>`;
-    });h+=`</div>`;
-  });
-  h+=`</div>
+    <h3 style="font-weight:900;color:var(--gold);margin-bottom:4px;font-size:.9rem">🔀 فرق الإقصائيات + قفل/فتح كل مباراة</h3>
+    <p style="font-size:.72rem;color:var(--muted);margin-bottom:10px">أدخل الفريقين يدوياً لكل مباراة، واستخدم الزر لقفل أو فتح التوقع لجميع المتسابقين فوراً</p>
+    <div class="ko-slot-grid">`;
+  for(const m of KO){
+    const vA=(S.actuals.koTeams&&S.actuals.koTeams[`m${m.id}_h`])||'';
+    const vB=(S.actuals.koTeams&&S.actuals.koTeams[`m${m.id}_a`])||'';
+    const isLocked=!!(S.actuals.koLocks&&S.actuals.koLocks[m.id]);
+    h+=`<div style="background:var(--card2);border:1px solid ${isLocked?'rgba(192,57,43,.3)':'var(--border)'};border-radius:9px;padding:10px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+        <span style="background:#060D14;border:1px solid var(--border);padding:2px 8px;border-radius:5px;color:var(--gold);font-size:.7rem;font-weight:700">م${m.id} | ${m.st}</span>
+        ${vA&&vB?`<span style="font-size:.72rem;color:var(--white);font-weight:700">${vA} × ${vB}</span>`:'<span style="font-size:.68rem;color:var(--muted)">لم يُحدد الفريقان بعد</span>'}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end">
+        <div><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px">الفريق أ</div>
+          <select class="psel" style="width:100%;font-size:.7rem" onchange="setKT('m${m.id}_h',this.value)">
+            ${opt('','— اختر —',vA)}${ALL_TEAMS.map(t=>opt(t,t,vA)).join('')}
+          </select></div>
+        <div><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px">الفريق ب</div>
+          <select class="psel" style="width:100%;font-size:.7rem" onchange="setKT('m${m.id}_a',this.value)">
+            ${opt('','— اختر —',vB)}${ALL_TEAMS.map(t=>opt(t,t,vB)).join('')}
+          </select></div>
+        <button onclick="toggleKOLock(${m.id})"
+          style="padding:8px 10px;border-radius:7px;border:1px solid;cursor:pointer;font-family:'Cairo',sans-serif;font-size:.72rem;font-weight:700;white-space:nowrap;transition:all .2s;
+          background:${isLocked?'rgba(192,57,43,.12)':'rgba(46,204,113,.08)'};
+          border-color:${isLocked?'rgba(192,57,43,.4)':'rgba(46,204,113,.3)'};
+          color:${isLocked?'#e74c3c':'#2ecc71'}">
+          ${isLocked?'🔒 مقفولة':'🔓 مفتوحة'}
+        </button>
+      </div>
+    </div>`;
+  }
+  h+=`</div></div>
+
   <!-- 8. MATCH RESULTS -->
   <div class="card">
     <h3 style="font-weight:900;color:var(--gold);margin-bottom:10px;font-size:.9rem">⚽ نتائج المباريات الفعلية</h3>
@@ -1491,14 +1548,11 @@ function renderAdm(){
 // ══════════════════════════════════════════════════════════
 //  ADMIN ACTIONS
 // ══════════════════════════════════════════════════════════
-async function admLockSection(uid,secId,lock){
+async function admLockSection(uid, secId, lock){
   try{
-    const p=S.allPreds[uid];if(!p)throw new Error('not found');
-    if(!p.adminLocks)p.adminLocks={};p.adminLocks[secId]=lock;
-    const {error}=await SB.from(COL_PRED).update({data:p,updated_at:new Date().toISOString()}).eq('id',uid);
-    if(error)throw error;
+    const field='adminLocks.'+secId;
+    await db.collection(COL_PRED).doc(uid).update({[field]:lock});
     toast(lock?`🔒 تم قفل ${secId}`:`🔓 تم فتح ${secId}`);
-    renderAdm();
   }catch(e){toast('❌ '+e.message);}
 }
 
@@ -1506,9 +1560,7 @@ async function admResetPIN(uid, name){
   const newPin=prompt(`PIN جديد لـ ${name} (4 أرقام):`);
   if(!newPin||!/^\d{4}$/.test(newPin)){toast('⚠️ PIN غير صالح');return;}
   try{
-    const p=S.allPreds[uid];if(p){p.pin=newPin;}
-    const {error}=await SB.from(COL_PRED).update({data:{...p},updated_at:new Date().toISOString()}).eq('id',uid);
-    if(error)throw error;
+    await db.collection(COL_PRED).doc(uid).update({pin:newPin});
     toast(`✅ تم تغيير PIN لـ ${name} بنجاح!`);
   }catch(e){toast('❌ '+e.message);}
 }
@@ -1546,8 +1598,7 @@ function dlToInputVal(isoStr){
 async function delPlayer(uid,name){
   if(!confirm(`حذف ${name} من المسابقة؟`))return;
   try{
-    const {error}=await SB.from(COL_PRED).delete().eq('id',uid);
-    if(error)throw error;
+    await db.collection(COL_PRED).doc(uid).delete();
     toast(`🗑️ تم حذف ${name}`);
   }catch(e){toast('❌ خطأ: '+e.message);}
 }
@@ -1555,7 +1606,6 @@ async function delPlayer(uid,name){
 function setAG(g,pk,v){if(!S.actuals.groups)S.actuals.groups={};if(!S.actuals.groups[g])S.actuals.groups[g]={};S.actuals.groups[g][pk]=v;}
 function setAB(i,v){const b=[...(S.actuals.bestThirds||Array(8).fill(''))];b[i]=v;S.actuals.bestThirds=b;}
 function setKT(k,v){if(!S.actuals.koTeams)S.actuals.koTeams={};S.actuals.koTeams[k]=v;}
-function setKoKickoff(matchId,val){if(!S.actuals.koKickoffs)S.actuals.koKickoffs={};S.actuals.koKickoffs[matchId]=val?val+':00+03:00':'';}
 function setAM(id,f,v){if(!S.actuals.matches)S.actuals.matches={};if(!S.actuals.matches[id])S.actuals.matches[id]={homeScore:'',awayScore:'',winner:'',timing:'FT'};S.actuals.matches[id][f]=v;}
 
 function setAT(t,btn){admTab=t;document.querySelectorAll('.adm-tabs button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAdmMl();}
@@ -1570,7 +1620,13 @@ function renderAdmMl(){
   el.innerHTML=ms.map(m=>{
     const isKO=m.type==='knockout';
     let home=m.home||'—',away=m.away||'—';
-    if(isKO){const t=getMT(m,'act');home=t.h;away=t.a;}
+    if(isKO){
+      home=(S.actuals.koTeams&&S.actuals.koTeams['m'+m.id+'_h'])||'';
+      away=(S.actuals.koTeams&&S.actuals.koTeams['m'+m.id+'_a'])||'';
+      if(!home||!away){
+        return `<div class="adm-m" style="opacity:.5"><div style="color:var(--muted);font-size:.78rem;font-weight:700">م${m.id} | ${m.st} | لم يُحدد الفريقان بعد</div></div>`;
+      }
+    }
     const ax=S.actuals.matches?.[m.id]||{homeScore:'',awayScore:'',winner:'',timing:'FT'};
     return`<div class="adm-m">
       <div style="display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:700;flex-wrap:wrap">
@@ -2115,28 +2171,44 @@ function filterPubs() {
 //  STARTUP
 // ══════════════════════════════════════════════════════════
 async function init(){
-  const timer=setTimeout(()=>{
-    document.getElementById('loading').style.display='none';
-    try{const cp=localStorage.getItem('wc26_preds_cache');if(cp)S.allPreds=JSON.parse(cp);}catch(e){}
-    try{const ca=localStorage.getItem('wc26_actuals_cache');if(ca)S.actuals={...S.actuals,...JSON.parse(ca)};}catch(e){}
-    renderLB();renderAnnounce();renderAnnounceBanner();startTicker();
-  },8000);
   try{
-    setSync('on'); listenPreds(); listenActuals();
+    await auth.signInAnonymously();
+    setSync('on');
+    listenPreds();
+    listenActuals();
     const sess=localStorage.getItem('wc26_session');
     if(sess){
-      const u=JSON.parse(sess);S.user=u;S.fbUid=u.uid;selAv=u.avatar||'☕';
-      try{
-        const {data:row}=await SB.from(COL_PRED).select('*').eq('id',u.uid).maybeSingle();
-        if(row){const p=row.data;S.draft={groups:p.groups||{},bestThirds:p.bestThirds||Array(8).fill(''),knockout:p.knockout||{},matches:p.matches||{},saves:p.saves||{groups:false,thirds:false,bracket:false,r1:false,r2:false,r3:false,ko:false},submits:p.submits||{groups:false,thirds:false,bracket:false,r1:false,r2:false,r3:false,ko:false},adminLocks:p.adminLocks||{}};}
-      }catch(e){const ld=localStorage.getItem('wc26_draft_'+u.uid);if(ld)try{S.draft={...S.draft,...JSON.parse(ld)};}catch(e2){}}
-      const pill=document.getElementById('upill');if(pill)pill.style.display='flex';
-      const pav=document.getElementById('pav');const pnm=document.getElementById('pnm');
-      if(pav)pav.textContent=u.avatar;if(pnm)pnm.textContent=u.name;
+      const u=JSON.parse(sess);
+      S.user=u;S.fbUid=u.uid;selAv=u.avatar||'☕';
+      const doc=await db.collection(COL_PRED).doc(u.uid).get();
+      if(doc.exists){
+        const p=doc.data();
+        S.draft={
+          groups:p.groups||{},bestThirds:p.bestThirds||Array(8).fill(''),
+          knockout:p.knockout||{},matches:p.matches||{},
+          saves:p.saves||{groups:false,thirds:false,bracket:false,r1:false,r2:false,r3:false,ko:false},
+          submits:p.submits||{groups:false,thirds:false,bracket:false,r1:false,r2:false,r3:false,ko:false},
+          adminLocks:p.adminLocks||{}
+        };
+      }
+      const pill=document.getElementById('upill');
+      if(pill) pill.style.display='flex';
+      const pav = document.getElementById('pav');
+      const pnm = document.getElementById('pnm');
+      if(pav) pav.textContent=u.avatar;
+      if(pnm) pnm.textContent=u.name;
     }
-  }catch(e){setSync('off');console.error(e);}
-  finally{clearTimeout(timer);document.getElementById('loading').style.display='none';}
-  renderLB();renderAnnounce();renderAnnounceBanner();startTicker();
+  }catch(e){
+    setSync('off');
+    console.error('Firebase error:',e);
+    toast('⚠️ مشكلة في الاتصال – تحقق من الإنترنت',6000);
+  }finally{
+    document.getElementById('loading').style.display='none';
+  }
+  renderLB();
+  renderAnnounce();
+  renderAnnounceBanner();
+  startTicker();
 }
 
 init();
@@ -2157,5 +2229,3 @@ init();
 </div>
 </body>
 </html>
-
-```
