@@ -1216,7 +1216,7 @@ function rKO(card){
     </div>`;
   }
   h+=`</div>`;
-  const avail=KO.filter(m=>{const t=getMT(m,'act');return!t.h.startsWith('فائز ')&&!t.h.startsWith('أول ')&&!t.h.startsWith('ثاني ')&&!t.h.startsWith('ثالث#')&&!t.h.startsWith('خاسر ')&&t.h!=='—';});
+  const avail=KO.filter(m=>S.actuals.koTeams&&S.actuals.koTeams['m'+m.id+'_h']&&S.actuals.koTeams['m'+m.id+'_a']);
   const all=avail.length>0&&avail.every(m=>S.draft.matches[m.id]?._saved);
   const cnt=avail.filter(m=>S.draft.matches[m.id]?._saved).length;
   h+=`<div class="svrow">
@@ -1240,7 +1240,7 @@ async function saveKMat(id){
   const btn=document.querySelector(`#mi-${id} .msv-btn`);
   if(btn){btn.classList.add('sv');btn.textContent='✅';}
   document.getElementById('mi-'+id)?.classList.add('sv-m');
-  const avail=KO.filter(m=>{const t=getMT(m,'act');return!t.h.startsWith('فائز ')&&!t.h.startsWith('أول ')&&!t.h.startsWith('ثاني ')&&!t.h.startsWith('ثالث#')&&t.h!=='—';});
+  const avail=KO.filter(m=>S.actuals.koTeams&&S.actuals.koTeams['m'+m.id+'_h']&&S.actuals.koTeams['m'+m.id+'_a']);
   const all=avail.length>0&&avail.every(m=>S.draft.matches[m.id]?._saved);
   const cnt=avail.filter(m=>S.draft.matches[m.id]?._saved).length;
   const st=document.querySelector('#step-card .svstat');
@@ -1288,11 +1288,32 @@ function calcScores(pred,act){
 }
 
 // ══════════════════════════════════════════════════════════
+//  ACCOUNT MERGE (historical points from an archived account)
+// ══════════════════════════════════════════════════════════
+function calcScoresForPlayer(uid, pred, actuals){
+  const merge = actuals.mergedAccounts && actuals.mergedAccounts[uid];
+  if(!merge) return calcScores(pred, actuals);
+  const own = calcScores(pred, actuals);
+  const srcPred = S.allPreds[merge.srcUid];
+  const srcLive = srcPred ? calcScores(srcPred, actuals) : {kp:0};
+  const gp = own.gp + (merge.frozenGP||0);
+  const kp = srcLive.kp; // مسار البطولة يأتي حياً من الحساب القديم فقط (يتجاهل مسار الحساب الجديد كلياً)
+  const mp = own.mp + (merge.frozenMP||0);
+  const bp = own.bp + (merge.frozenBP||0);
+  const ec = own.ec + (merge.frozenEC||0);
+  return {gp,kp,mp,bp,ec,total:gp+kp+mp};
+}
+function isMergedSourceUid(uid){
+  const merges=S.actuals.mergedAccounts||{};
+  return Object.values(merges).some(m=>m.srcUid===uid);
+}
+
+// ══════════════════════════════════════════════════════════
 //  LEADERBOARD
 // ══════════════════════════════════════════════════════════
 function renderLB(){
-  const rows=Object.entries(S.allPreds).filter(([,p])=>p?.name)
-    .map(([uid,p])=>({uid,...calcScores(p,S.actuals),name:p.name,av:p.avatar||'☕',sub:p.submits}))
+  const rows=Object.entries(S.allPreds).filter(([uid,p])=>p?.name&&!isMergedSourceUid(uid))
+    .map(([uid,p])=>({uid,...calcScoresForPlayer(uid,p,S.actuals),name:p.name,av:p.avatar||'☕',sub:p.submits}))
     .sort((a,b)=>b.total-a.total||b.ec-a.ec);
   const pcntEl = document.getElementById('pcnt');
   const mcntEl = document.getElementById('mcnt');
@@ -1421,7 +1442,7 @@ function renderAdm(){
       </tr></thead><tbody>`;
 
   const rows=Object.entries(S.allPreds).filter(([,p])=>p?.name)
-    .map(([uid,p])=>({uid,...calcScores(p,S.actuals),name:p.name,av:p.avatar||'☕',sub:p.submits||{}}))
+    .map(([uid,p])=>({uid,...calcScoresForPlayer(uid,p,S.actuals),name:p.name,av:p.avatar||'☕',sub:p.submits||{},isMergedSrc:isMergedSourceUid(uid)}))
     .sort((a,b)=>b.total-a.total);
 
   rows.forEach((p,i)=>{
@@ -1443,7 +1464,9 @@ function renderAdm(){
 
     h+=`<tr>
       <td style="color:var(--muted);font-size:.72rem">${i+1}</td>
-      <td><div style="display:flex;align-items:center;gap:6px;font-weight:700;color:var(--white);min-width:110px">${p.av} ${p.name}</div></td>
+      <td><div style="display:flex;align-items:center;gap:6px;font-weight:700;color:var(--white);min-width:110px">${p.av} ${p.name}
+        ${p.isMergedSrc?`<span style="font-size:.58rem;background:rgba(201,168,76,.12);border:1px solid var(--gold-dim);color:var(--gold);padding:1px 6px;border-radius:4px;font-weight:700">🔗 مدمج مع ${(S.actuals.mergedAccounts&&Object.values(S.actuals.mergedAccounts).find(m=>m.srcUid===p.uid)?.dstName)||'حساب آخر'}</span>`:''}
+      </div></td>
       <td>
         <span style="background:rgba(201,168,76,.1);border:1px solid var(--gold-dim);border-radius:5px;padding:2px 7px;font-size:.78rem;font-weight:900;color:var(--gold);font-family:monospace">${pin}</span>
         <button onclick="admResetPIN('${p.uid}','${esc(p.name)}')" style="font-size:.6rem;padding:1px 5px;margin-right:3px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-family:'Cairo'">✏️</button>
@@ -1462,6 +1485,27 @@ function renderAdm(){
     </tr>`;
   });
   h+=`</tbody></table></div></div></div>
+
+  <!-- 4b. HISTORICAL ACCOUNT MERGE -->
+  <div class="card" style="margin-bottom:12px">
+    <h3 style="font-weight:900;color:var(--gold);margin-bottom:4px;font-size:.9rem">🔗 دمج نقاط تاريخية (حساب قديم مؤرشف → حساب نشط)</h3>
+    <p style="font-size:.72rem;color:var(--muted);margin-bottom:12px">
+      للاعب لديه حسابان (قديم من بطولة سابقة + جديد نشط). يُضاف مجموعات/مباريات/بوستر/دقيق الحساب القديم كأرقام ثابتة للحساب الجديد،
+      بينما نقاط <strong>مسار البطولة</strong> تبقى حيّة من الحساب القديم فقط (تتجاهل أي نقاط مسار في الحساب الجديد). الحساب القديم يختفي من الترتيب العام ويبقى ظاهراً هنا فقط.
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:14px">
+      <div>
+        <label style="display:block;font-size:.68rem;color:var(--muted);margin-bottom:4px">الحساب القديم (المصدر — سيختفي من الترتيب)</label>
+        <select id="merge-src-select" class="psel" style="width:100%"></select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.68rem;color:var(--muted);margin-bottom:4px">الحساب النشط (الهدف — يستلم النقاط)</label>
+        <select id="merge-dst-select" class="psel" style="width:100%"></select>
+      </div>
+      <button class="btn btn-gold" onclick="createAccountMerge()" style="font-size:.75rem;padding:9px 16px;white-space:nowrap">🔗 دمج الآن</button>
+    </div>
+    <div id="merge-list"></div>
+  </div>
 
   <!-- 5. GROUP RESULTS -->
   <div class="card" style="margin-bottom:12px">
@@ -1543,6 +1587,7 @@ function renderAdm(){
   </div>`;
   document.getElementById('adm-panel').innerHTML=h;
   renderAdmMl();
+  populateMergeSelects();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1664,12 +1709,80 @@ async function admSaveAll(){
 }
 
 // ══════════════════════════════════════════════════════════
+//  HISTORICAL ACCOUNT MERGE
+// ══════════════════════════════════════════════════════════
+function populateMergeSelects(){
+  const srcSel=document.getElementById('merge-src-select');
+  const dstSel=document.getElementById('merge-dst-select');
+  if(!srcSel||!dstSel)return;
+  const players=Object.entries(S.allPreds).filter(([,p])=>p?.name).sort((a,b)=>a[1].name.localeCompare(b[1].name,'ar'));
+  const optsHtml='<option value="">— اختر —</option>'+players.map(([uid,p])=>`<option value="${uid}">${p.name}</option>`).join('');
+  srcSel.innerHTML=optsHtml;
+  dstSel.innerHTML=optsHtml;
+  renderMergeList();
+}
+
+function renderMergeList(){
+  const el=document.getElementById('merge-list');
+  if(!el)return;
+  const merges=S.actuals.mergedAccounts||{};
+  const entries=Object.entries(merges);
+  if(entries.length===0){el.innerHTML='<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:10px">لا توجد حسابات مدموجة حالياً</div>';return;}
+  el.innerHTML=entries.map(([dstUid,m])=>{
+    const dstP=S.allPreds[dstUid];
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+      <div style="font-size:.78rem">
+        <strong style="color:var(--gold)">${m.srcName}</strong>
+        <span style="color:var(--muted)"> → مدموج مع → </span>
+        <strong style="color:var(--white)">${dstP?dstP.name:m.dstName||'—'}</strong>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:3px">
+          مجموعات: +${m.frozenGP} | مباريات: +${m.frozenMP} | بوستر: +${m.frozenBP} | دقيق: +${m.frozenEC} | مسار: حي من ${m.srcName}
+        </div>
+      </div>
+      <button onclick="removeAccountMerge('${dstUid}')" style="font-size:.65rem;padding:5px 10px;background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.3);color:#e74c3c;border-radius:5px;cursor:pointer;white-space:nowrap">🗑️ إلغاء الدمج</button>
+    </div>`;
+  }).join('');
+}
+
+async function createAccountMerge(){
+  const srcUid=document.getElementById('merge-src-select').value;
+  const dstUid=document.getElementById('merge-dst-select').value;
+  if(!srcUid||!dstUid){toast('⚠️ اختر الحسابين أولاً');return;}
+  if(srcUid===dstUid){toast('⚠️ لا يمكن دمج الحساب مع نفسه');return;}
+  const srcPred=S.allPreds[srcUid];
+  const dstPred=S.allPreds[dstUid];
+  if(!srcPred||!dstPred){toast('❌ حساب غير موجود');return;}
+  if(!confirm(`تأكيد: دمج نقاط "${srcPred.name}" (القديم) إلى "${dstPred.name}" (النشط)؟\nسيختفي "${srcPred.name}" من الترتيب العام ويبقى مسار البطولة حياً من حسابه.`))return;
+
+  const srcScores=calcScores(srcPred,S.actuals);
+  if(!S.actuals.mergedAccounts)S.actuals.mergedAccounts={};
+  S.actuals.mergedAccounts[dstUid]={
+    srcUid, srcName:srcPred.name, dstName:dstPred.name,
+    frozenGP:srcScores.gp, frozenMP:srcScores.mp, frozenBP:srcScores.bp, frozenEC:srcScores.ec,
+    mergedAt:new Date().toISOString()
+  };
+  await fbSaveActuals();
+  toast(`✅ تم الدمج: ${srcPred.name} → ${dstPred.name}`,5000);
+  renderMergeList();
+  renderAdm();
+}
+
+async function removeAccountMerge(dstUid){
+  if(!confirm('إلغاء هذا الدمج؟ سيعود الحساب القديم للظهور في الترتيب العام بنقاطه الأصلية.'))return;
+  if(S.actuals.mergedAccounts) delete S.actuals.mergedAccounts[dstUid];
+  await fbSaveActuals();
+  toast('✅ تم إلغاء الدمج');
+  renderMergeList();
+  renderAdm();
+}
+
+// ══════════════════════════════════════════════════════════
 //  VIEW PLAYER PREDICTIONS MODAL
 // ══════════════════════════════════════════════════════════
 function viewPlayer(uid) {
   const pred = S.allPreds[uid];
   if (!pred) { toast('❌ لم يتم العثور على بيانات المتسابق'); return; }
-  const scores = calcScores(pred, S.actuals);
+  const scores = calcScoresForPlayer(uid, pred, S.actuals);
   const ag = S.actuals.groups || {};
   const ab = S.actuals.bestThirds || [];
   const am = S.actuals.matches || {};
@@ -1808,9 +1921,9 @@ function viewPlayer(uid) {
           ${hasResult && pm ? `<span style="color:${ptsEarned>0?'#2ecc71':'#e74c3c'};font-weight:700">+${ptsEarned}ن</span>` : ''}
         </div>
         ${pm ? `<div class="pm-body" style="margin-bottom:4px">
-          <span class="pm-home" style="font-size:.68rem">${getMT(m,'act').h}</span>
+          <span class="pm-home" style="font-size:.68rem">${(S.actuals.koTeams&&S.actuals.koTeams['m'+m.id+'_h'])||'—'}</span>
           <span class="pm-score ${exactOk?'correct':hasResult?'wrong':''}">${pH} : ${pA}</span>
-          <span class="pm-away" style="font-size:.68rem">${getMT(m,'act').a}</span>
+          <span class="pm-away" style="font-size:.68rem">${(S.actuals.koTeams&&S.actuals.koTeams['m'+m.id+'_a'])||'—'}</span>
         </div>` : ''}
         ${pw ? `<div style="font-size:.68rem;text-align:center;margin-top:3px">
           <span style="color:${winOk?'#2ecc71':ax?.winner?'#e74c3c':'var(--muted)'}">فائز: ${pw} ${winOk?'✅':ax?.winner?'❌':''}</span>
@@ -2105,8 +2218,8 @@ function koMatchDLBar(matchId) {
 // ══════════════════════════════════════════════════════════
 function renderPubs() {
   const rows = Object.entries(S.allPreds)
-    .filter(([,p]) => p?.name)
-    .map(([uid, p]) => ({ uid, ...calcScores(p, S.actuals), name: p.name, av: p.avatar||'☕', pred: p }))
+    .filter(([uid,p]) => p?.name && !isMergedSourceUid(uid))
+    .map(([uid, p]) => ({ uid, ...calcScoresForPlayer(uid,p,S.actuals), name: p.name, av: p.avatar||'☕', pred: p }))
     .sort((a, b) => b.total - a.total || b.ec - a.ec);
 
   const pubCnt = document.getElementById('pubs-cnt');
